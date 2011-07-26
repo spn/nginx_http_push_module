@@ -19,7 +19,7 @@ static void ngx_http_push_clean_timeouted_subscriber(ngx_event_t *ev)
 {
 	ngx_http_push_subscriber_t *subscriber = NULL;
 	ngx_http_request_t *r = NULL;
-	ngx_chain_t *chain = NULL;
+	//ngx_chain_t *chain = NULL;
 
 	subscriber = ev->data;
 	r = subscriber->request;
@@ -520,11 +520,11 @@ static ngx_int_t ngx_http_push_subscriber_handler(ngx_http_request_t *r) {
 			ngx_chain_t           *prefix;
 			ngx_chain_t           *suffix;
 
-			if((prefix = ngx_pcalloc(pool, sizeof(*prefix)))==NULL) {
+			if((prefix = ngx_pcalloc(r->pool, sizeof(*prefix)))==NULL) {
 				return NGX_HTTP_INTERNAL_SERVER_ERROR;
 			}
 
-			if((suffix = ngx_pcalloc(pool, sizeof(*suffix)))==NULL) {
+			if((suffix = ngx_pcalloc(r->pool, sizeof(*suffix)))==NULL) {
 				return NGX_HTTP_INTERNAL_SERVER_ERROR;
 			}
 
@@ -587,6 +587,7 @@ static ngx_int_t ngx_http_push_handle_subscriber_concurrency(ngx_http_request_t 
 			//channel. However, since settings are bound to locations and not
 			//specific channels, this assumption need not hold. Hence this broadcast.
 			ngx_int_t rc = ngx_http_push_broadcast_status_locked(channel, NGX_HTTP_NOT_FOUND, &NGX_HTTP_PUSH_HTTP_STATUS_409, r->connection->log, ngx_http_push_shpool);
+			if(rc) ;
 			ngx_shmtx_unlock(&ngx_http_push_shpool->mutex);
 
 			return NGX_OK;
