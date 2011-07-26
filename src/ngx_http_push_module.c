@@ -515,8 +515,43 @@ static ngx_int_t ngx_http_push_subscriber_handler(ngx_http_request_t *r) {
 				clnf->name = chain->buf->file->name.data;
 				clnf->log = r->pool->log;
 			}
-			
-			return ngx_http_push_prepare_response_to_subscriber_request(r, chain, content_type, etag, last_modified);
+
+			// Wrap chain with JSONP callback.
+			ngx_chain_t           *prefix;
+			ngx_chain_t           *suffix;
+
+			if((prefix = ngx_pcalloc(pool, sizeof(*prefix)))==NULL) {
+				return NGX_HTTP_INTERNAL_SERVER_ERROR;
+			}
+
+			if((suffix = ngx_pcalloc(pool, sizeof(*suffix)))==NULL) {
+				return NGX_HTTP_INTERNAL_SERVER_ERROR;
+			}
+
+			ngx_buf_t             *p_buf;
+			ngx_buf_t             *s_buf;
+
+			if((p_buf = ngx_calloc_buf(r->pool))==NULL) {
+				return NGX_HTTP_INTERNAL_SERVER_ERROR;
+			}
+			p_buf->start = p_buf->pos = NGX_HTTP_PUSH_JSONP_PREFIX;
+			p_buf->end = p_buf->last = NGX_HTTP_PUSH_JSONP_PREFIX + ngx_strlen(NGX_HTTP_PUSH_JSONP_PREFIX);
+			p_buf->memory = 1;
+
+			if((s_buf = ngx_calloc_buf(r->pool))==NULL) {
+				return NGX_HTTP_INTERNAL_SERVER_ERROR;
+			}
+			s_buf->start = s_buf->pos = NGX_HTTP_PUSH_JSONP_SUFFIX;
+			s_buf->end = s_buf->last = NGX_HTTP_PUSH_JSONP_SUFFIX + ngx_strlen(NGX_HTTP_PUSH_JSONP_SUFFIX);
+			s_buf->memory = 1;
+			s_buf->last_buf = 1;
+			s_buf->last_in_chain = 1;
+
+			prefix->next = chain;
+			chain->next = suffix;
+			suffix->next = NULL;
+
+			return ngx_http_push_prepare_response_to_subscriber_request(r, prefix, content_type, etag, last_modified);
 			
 		default: //we shouldn't be here.
 			return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -1152,10 +1187,10 @@ static ngx_str_t * ngx_http_push_subscriber_get_etag(ngx_http_request_t * r) {
 
 //buffer is _copied_
 //if shpool is provided, it is assumed that shm it is locked
-static ngx_chain_t * ngx_http_push_create_output_chain_general(ngx_buf_t *buf, ngx_pool_t *pool, ngx_log_t *log, ngx_slab_pool_t *shpool) {
+static ngx_chain_t * ngx_http_push_create_output_chain_general(ngx_http_request *r, ngx_buf_t *buf, ngx_pool_t *pool, ngx_log_t *log, ngx_slab_pool_t *shpool) {
 	ngx_chain_t                    *out;
 	ngx_file_t                     *file;
-	
+
 	if((out = ngx_pcalloc(pool, sizeof(*out)))==NULL) {
 		return NULL;
 	}
@@ -1186,7 +1221,7 @@ static ngx_chain_t * ngx_http_push_create_output_chain_general(ngx_buf_t *buf, n
 	buf_copy->last_buf = 1;
 	out->buf = buf_copy;
 	out->next = NULL;
-	return out;	
+	return out;
 }
 
 static void ngx_http_push_subscriber_cleanup(ngx_http_push_subscriber_cleanup_t *data) {

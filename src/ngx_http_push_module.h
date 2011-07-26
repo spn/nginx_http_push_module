@@ -54,6 +54,7 @@ typedef struct {
 
 typedef struct {
 	ngx_int_t                       index;
+	ngx_int_t                       callback_index;
 	time_t                          buffer_timeout;
 	ngx_int_t                       min_messages;
 	ngx_int_t                       max_messages;
@@ -242,6 +243,10 @@ const ngx_str_t NGX_HTTP_PUSH_CHANNEL_INFO_YAML = ngx_string(
 	"requested: %d" CRLF
 	"subscribers %ui" CRLF
 	"\0");
+
+const ngx_str_t NGX_HTTP_PUSH_JSONP_PREFIX = ngx_string("(\0");
+const ngx_str_t NGX_HTTP_PUSH_JSONP_SUFFIX = ngx_string(");\0");
+
 
 typedef struct {
 	char                           *subtype;
