@@ -534,15 +534,15 @@ static ngx_int_t ngx_http_push_subscriber_handler(ngx_http_request_t *r) {
 			if((p_buf = ngx_calloc_buf(r->pool))==NULL) {
 				return NGX_HTTP_INTERNAL_SERVER_ERROR;
 			}
-			p_buf->start = p_buf->pos = NGX_HTTP_PUSH_JSONP_PREFIX;
-			p_buf->end = p_buf->last = NGX_HTTP_PUSH_JSONP_PREFIX + ngx_strlen(NGX_HTTP_PUSH_JSONP_PREFIX);
+			p_buf->start = p_buf->pos = (u_char *)NGX_HTTP_PUSH_JSONP_PREFIX;
+			p_buf->end = p_buf->last = (u_char *)NGX_HTTP_PUSH_JSONP_PREFIX + ngx_strlen(NGX_HTTP_PUSH_JSONP_PREFIX);
 			p_buf->memory = 1;
 
 			if((s_buf = ngx_calloc_buf(r->pool))==NULL) {
 				return NGX_HTTP_INTERNAL_SERVER_ERROR;
 			}
-			s_buf->start = s_buf->pos = NGX_HTTP_PUSH_JSONP_SUFFIX;
-			s_buf->end = s_buf->last = NGX_HTTP_PUSH_JSONP_SUFFIX + ngx_strlen(NGX_HTTP_PUSH_JSONP_SUFFIX);
+			s_buf->start = s_buf->pos = (u_char *)NGX_HTTP_PUSH_JSONP_SUFFIX;
+			s_buf->end = s_buf->last = (u_char *)NGX_HTTP_PUSH_JSONP_SUFFIX + ngx_strlen(NGX_HTTP_PUSH_JSONP_SUFFIX);
 			s_buf->memory = 1;
 			s_buf->last_buf = 1;
 			s_buf->last_in_chain = 1;
@@ -1273,8 +1273,13 @@ static ngx_int_t ngx_http_push_prepare_response_to_subscriber_request(ngx_http_r
 	ngx_http_push_add_response_header(r, &NGX_HTTP_PUSH_HEADER_VARY, &NGX_HTTP_PUSH_VARY_HEADER_VALUE);
 	
 	r->headers_out.status=NGX_HTTP_OK;
-	//we know the entity length, and we're using just one buffer. so no chunking please.
-	r->headers_out.content_length_n=ngx_buf_size(chain->buf);
+	//we know the entity length, and we're many buffers. so no chunking please.
+	ngx_chain_t *cl = chain;
+	r->headers_out.content_length_n = 0;
+	while (cl!=NULL) {
+		r->headers_out.content_length_n += ngx_buf_size(cl->buf);
+		cl = cl->next;
+	}
 	if((res = ngx_http_send_header(r)) >= NGX_HTTP_SPECIAL_RESPONSE) {
 		return res;
 	}
